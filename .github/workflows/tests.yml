@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install "pytest>=8,<10" "pyyaml>=6,<7"
+      - run: python -m pytest -q -p no:cacheprovider
+
+  live:
+    # One real check against precleared.dev, to catch API changes.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "pytest>=8,<10" "pyyaml>=6,<7"
+      - run: python -m pytest -q -rs -p no:cacheprovider tests/test_live.py
+        env:
+          PRECLEARED_LIVE: "1"
