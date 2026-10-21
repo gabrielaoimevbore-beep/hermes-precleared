@@ -1,0 +1,65 @@
+name: precleared
+version: 0.1.0
+manifest_version: 2
+description: >-
+  Checks cold email against the law before it goes out. When the agent sends an
+  email with a send tool, one of Hermes's email skills or an email API call,
+  Precleared checks each new recipient against UK (PECR, UK GDPR), US (CAN-SPAM),
+  Canadian (CASL), German, French, Australian, Irish and Dutch rules. Anything not
+  cleared goes to Hermes's approval prompt (or is refused, in block mode) with the
+  rule, its source and a signed receipt. Also adds the precleared_check and
+  precleared_verify_receipt tools.
+author: Precleared
+license: MIT
+homepage: https://github.com/gabrielaoimevbore-beep/hermes-precleared
+tags: [email, compliance, outbound, sales, gdpr, pecr, can-spam, casl]
+requires_hermes: ">=0.22.2"
+provides_tools:
+  - precleared_check
+  - precleared_verify_receipt
+provides_hooks:
+  - pre_tool_call
+config_schema:
+  sender_country:
+    type: str
+    choices: [GB, US]
+    required: true
+    label: Your business's country
+    description: Where the sending business is based, GB or US (not where the recipients are). Precleared covers UK and US senders.
+  mode:
+    type: str
+    choices: [ask, block, off]
+    default: ask
+    label: When an email isn't cleared
+    description: ask sends it to Hermes's approval prompt with the verdict, block refuses it, off turns the pre-send check off (the tools still work).
+  address_source:
+    type: str
+    choices: [published, bought, scraped, given, unknown]
+    default: unknown
+    label: Where your addresses come from
+    description: published (their website, a profile or a directory), bought (a purchased list), scraped (collected by a tool), given (they gave it to you) or unknown. It changes the verdict.
+  pitch:
+    type: str
+    default: ""
+    label: What your emails offer
+    description: A few words, for example "bookkeeping software for dental practices". Used to judge relevance to the recipient's job.
+  prospect_country:
+    type: str
+    default: ""
+    label: Prospects' country (optional)
+    description: Two-letter code, if all your prospects are in one country. Used only when the address, company records and website don't show it.
+  ignore_domains:
+    type: list
+    default: []
+    label: Domains not to check
+    description: Your own domains and others you email that aren't cold outreach, for example ["mycompany.com"]. Subdomains are included.
+  extra_tools:
+    type: list
+    default: []
+    label: Extra send tools
+    description: Names of other tools that send email, for example ["mcp__instantly__create_lead"] or a pattern like ["mcp__smtp__*"]. Their recipients are checked too.
+  api_key:
+    type: secret
+    env: PRECLEARED_API_KEY
+    label: Precleared API key (optional)
+    description: Without a key you get Precleared's free daily allowance. A free key from https://precleared.dev/get-key gives you your own.
