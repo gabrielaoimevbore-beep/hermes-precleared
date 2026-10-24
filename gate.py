@@ -614,12 +614,20 @@ def skeleton(text: str) -> str:
 # A command word: at the start of the text or after a separator or a shell
 # keyword, after any VAR=value assignments and sudo/env/timeout style wrappers,
 # with an optional path (~/bin/, $HOME/.local/bin/, /usr/sbin/).
+#
+# The repeated parts are bounded (up to 8 assignments, 4 wrappers and 6 flags per
+# wrapper), a quoted assignment value can only be read one way, and a wrapper word
+# is never taken as a flag's argument. Without that, an input such as "sudo -a 1 ",
+# 'A="1" ' or "sudo -a " repeated a few dozen times makes the match backtrack
+# exponentially, and this runs on every terminal call that mentions a mail command
+# or curl.
+_WRAPPER = r"(?:sudo|doas|exec|command|nohup|env|time|nice|ionice|stdbuf|timeout|xargs|setsid|caffeinate|unbuffer|chronic)"
 _COMMAND_PREFIX = (
     r"(?:^|(?<=[\n;|&(`])|(?<=\$\())[ \t]*"
     r"(?:(?:if|then|do|else|elif|while|until|!|\{)[ \t]+)*"
-    r"(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s;|&]*)[ \t]+)*"
-    r"(?:(?:sudo|doas|exec|command|nohup|env|time|nice|ionice|stdbuf|timeout|xargs|setsid|caffeinate|unbuffer|chronic)"
-    r"(?:[ \t]+-{1,2}[A-Za-z][\w-]*(?:[ \t]+[^\s;|&-][^\s;|&]*)?)*(?:[ \t]+\d[\w.]*)?[ \t]+)*"
+    r"(?:[A-Za-z_][A-Za-z0-9_]*=(?:(?:\"[^\"\n]*\"|'[^'\n]*')[^\s;|&]*|[^\s;|&\"'][^\s;|&]*)?[ \t]+){0,8}"
+    r"(?:" + _WRAPPER + r"(?:[ \t]+-{1,2}[A-Za-z][\w-]*(?:[ \t]+(?!" + _WRAPPER + r"[ \t])[^\s;|&-][^\s;|&]*)?){0,6}"
+    r"(?:[ \t]+\d[\w.]*)?[ \t]+){0,4}"
     r"(?:(?:~|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|\.{1,2})?/(?:[\w.-]+/)*)?"
 )
 MAILERS = ("sendmail", "msmtp", "mailx", "mail", "mutt", "neomutt")
