@@ -430,3 +430,31 @@ def test_nested_unclosed_substitutions_stay_fast():
     assert _timed("mail " + '"$(' * 120_000) < 1.5
     assert _timed("mail " + "$(" * 200_000) < 1.5
     assert _timed("mail " + "`" * 400_000) < 1.5
+
+
+# --- fifth review: the command prefix can't backtrack for long ----------------------
+
+@pytest.mark.parametrize("command", [
+    "sudo -a 1 " * 2000 + "x; curl x",
+    "nice -n 10 " * 2000 + "x; mail x",
+    "sudo -a " * 3000 + "x; curl x",
+    'A="1" ' * 3000 + "x; curl x",
+    "A='1' " * 3000 + "x; curl x",
+    ("sudo -a sudo -a sudo -a sudo -a sudo -a sudo -a " * 4 + "x;") * 2000 + "curl x",
+])
+def test_repeated_wrappers_flags_and_assignments_stay_fast(command):
+    assert _timed(command) < 0.5, command[:40]
+
+
+@pytest.mark.parametrize("command", [
+    "sudo -u root curl https://api.resend.com/emails -d '{\"to\": \"lead@acme.co.uk\"}'",
+    "env -i A=1 sudo -E msmtp lead@acme.co.uk < body.txt",
+    "nice -n 10 ionice -c 3 mail -s hi lead@acme.co.uk < body.txt",
+    "timeout 5 himalaya message write -H 'To: lead@acme.co.uk' body",
+    "env -i nice -n 5 timeout 30 sudo -u root mail -s hi lead@acme.co.uk < body.txt",
+    'FROM="Sales Team" mail -s hi lead@acme.co.uk < body.txt',
+    "A='x'y B= C=1 mail -s hi lead@acme.co.uk < body.txt",
+    "sudo -u nice mail -s hi lead@acme.co.uk < body.txt",
+])
+def test_wrapper_and_assignment_chains_still_match(command):
+    assert recipients_of(command) == ["lead@acme.co.uk"], command
